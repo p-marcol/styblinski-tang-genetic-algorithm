@@ -1,11 +1,14 @@
-import numpy as np
-from random import seed, uniform, random
+import copy
+from tqdm import tqdm
 
-POPULATION_SIZE = 100  # population size
+import numpy as np
+
+POPULATION_SIZE = 10000  # population size
 FUNCTION_DOMAIN = [-5.0, 5]  # genes range
 PARAMETER_COUNT = 2  # no. of parameters
-MUTATION_RATE = 0.01  # rate of mutations
+MUTATION_RATE = 0.1  # rate of mutations
 SEED = 42
+show_progress_bar = True
 
 expected_value_single = -39.1661657037714
 TARGET = PARAMETER_COUNT * expected_value_single  # goal
@@ -21,23 +24,24 @@ class Genome:
 
     def generate(self):
         self.chromo = rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1], PARAMETER_COUNT)
-        self.fitness = styblinski_tang(self.chromo) - TARGET
+        self.fitness = float(styblinski_tang(self.chromo) - TARGET)
 
     def set_chromo(self, chromo):
         self.chromo = chromo
-        self.fitness = styblinski_tang(self.chromo) - TARGET
+        self.fitness = float(styblinski_tang(self.chromo) - TARGET)
 
     def mutate(self):
         for i in range(PARAMETER_COUNT):
             if rng.random() < MUTATION_RATE:
-                self.chromo[i] = rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1], 1)
+                self.chromo[i] = float(rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1], 1))
 
     def crossover(self, individual):
         exchange_point = rng.integers(low=0, high=POPULATION_SIZE - 1, size=1)
         new_chromo = Genome()
-        new_chromo.set_chromo(np.concatenate((self.chromo[:int(exchange_point)], individual.chromo[int(exchange_point):]), axis=None))
+        p1 = list(self.chromo[:int(exchange_point)])
+        p2 = list(individual.chromo[int(exchange_point):])
+        new_chromo.set_chromo(p1+p2)
         return new_chromo
-
 
 
 def styblinski_tang(value_array):
@@ -48,33 +52,39 @@ def styblinski_tang(value_array):
 
 
 def crossover(better_half, population):
-    crossed = []
-    for i in range(POPULATION_SIZE):
+    crossed = list()
+    for i in tqdm(range(POPULATION_SIZE), disable=not show_progress_bar, desc="Crossover"):
         parent1 = rng.choice(better_half)
-        parent2 = rng.choice(population[:(POPULATION_SIZE // 2)])
-        crossed.append(parent1.crossover(parent2))
+        parent2 = rng.choice(population)
+        crossed.append(parent1.crossover(parent2))  # Parents are crossing and result is appended to crossed list
     return crossed
 
 
-def mutate(exchanged):
+def mutate(crossed):
+    print("Mutate stage")
     mutated_offspring = []
-    for genome in exchanged:
+    for genome in tqdm(crossed, disable=not show_progress_bar, desc="Mutation"):
         genome.mutate()
         mutated_offspring.append(genome)
     return mutated_offspring
 
 
-def fitness_calc(population_chromo):
-    difference = abs(styblinski_tang(population_chromo) - TARGET)
-    return [population_chromo, difference]
-
-
-def select_best_half(population):
-    sorted_population = sorted(population, key=lambda x: x.fitness, reverse=False)
-    return sorted_population[:(POPULATION_SIZE // 2)]
+def select_tournament(population):
+    """
+    Best of 3 tournament
+    """
+    best_population = list()
+    for _ in tqdm(range(POPULATION_SIZE//2), disable=not show_progress_bar, desc="Tournament"):
+        tournament = list()
+        for i in range(3):
+            tournament.append(rng.choice(population))
+        tournament.sort(key=lambda x: x.fitness)
+        best_population.append(tournament[0])
+    return best_population
 
 
 def initialize_population(instance_size):
+    print("Initializing population stage")
     population = list()
     for i in range(instance_size):
         genome = Genome()
@@ -84,11 +94,20 @@ def initialize_population(instance_size):
 
 
 def replace(new_gen, population):
-    for _ in range(POPULATION_SIZE):
+    print("Replace stage")
+    for _ in tqdm(range(POPULATION_SIZE), disable=not show_progress_bar, desc="Replace"):
         if population[_].fitness > new_gen[_].fitness:
             population[_] = new_gen[_]
     return population
 
+
+"""
+    Genetic algorithm steps:
+    1. Initialize a population N
+    2. Select individuals to evolve from
+    3. Crossover of couples of parents
+    4. Mutate individuals according to their mutation rate
+"""
 
 def main():
     initial_population = initialize_population(POPULATION_SIZE)
@@ -96,9 +115,13 @@ def main():
     population = initial_population
     generation = 1
 
+    print("Initial Population Size: ", POPULATION_SIZE)
+    initial_population.sort(key=lambda x: x.fitness)
+    print(f"Values: {initial_population[0].chromo}, Fitness: {initial_population[0].fitness} Generation {generation}")
+
     while not found:
-        best_half = select_best_half(population)
-        population = sorted(population, key=lambda x: x.fitness, reverse=False)
+        best_half = select_tournament(population)
+        population = sorted(population, key=lambda x: x.fitness)
         crossed = crossover(best_half, population)
         new_population = mutate(crossed)
 
@@ -108,7 +131,7 @@ def main():
             print("Target found!")
             print(f"Values: {population[0].chromo}, Generation {generation}")
             break
-        print(f"Values: {population[0].chromo}, Fitness: {population[0].fitness} Generation {generation}")
+        print(f"Values: {population[0].chromo}, Fitness: {population[0].fitness} Generation {generation}, Population size: {population.__len__()}")
         generation += 1
 
 
