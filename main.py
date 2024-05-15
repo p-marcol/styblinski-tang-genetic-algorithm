@@ -1,16 +1,22 @@
 import copy
+import os.path
+
 from tqdm import tqdm
 from time import sleep
 import numpy as np
+import signal
+import sys
+import datetime
 
 POPULATION_SIZE = 5000  # population size
 FUNCTION_DOMAIN = [-5.0, 5.0]  # genes range
 PARAMETER_COUNT = 5  # no. of parameters
 MUTATION_RATE = 0.05  # rate of mutations
+CROSS_RATE = 0.7  # rate of crossover (0.7 - 0.9)
 SEED = 1945
 show_progress_bar = True
 leave_progress_bar = False
-
+BEST_INDIVIDUAL_STR = ""
 expected_value_single = -39.1661657037714
 TARGET = PARAMETER_COUNT * expected_value_single  # goal
 
@@ -60,11 +66,21 @@ class Genome:
         :param individual: genome to crossover with
         """
         exchange_point = rng.integers(low=0, high=PARAMETER_COUNT)
-        new_chromo = Genome()
-        p1 = list(self.chromo[:int(exchange_point)])
-        p2 = list(individual.chromo[int(exchange_point):])
-        new_chromo.set_chromo(p1+p2)
-        return new_chromo
+        child1 = Genome()
+        child2 = Genome()
+
+        parent1left = list(self.chromo[:int(exchange_point)])
+        parent2right = list(individual.chromo[int(exchange_point):])
+
+        parent2left = list(individual.chromo[:int(exchange_point)])
+        parent1right = list(self.chromo[int(exchange_point):])
+
+        child1.set_chromo(parent1left+parent2right)
+        child2.set_chromo(parent2left+parent1right)
+        return [child1, child2]
+
+    def __str__(self):
+        return str(self.chromo)
 
 
 def styblinski_tang(value_array):
@@ -80,20 +96,17 @@ def styblinski_tang(value_array):
     return result / 2
 
 
-def crossover(better_half, population):
-    # 70% - 90% prawdopodobienstwo krzyżowania!
-    """
-    Crossover of the better half of the population with the rest of the population
-
-    :param better_half: better half of the population
-    :param population: population to crossover with
-    :return: list of crossed genomes
-    """
+def crossover(population):
     crossed = list()
     for i in tqdm(range(POPULATION_SIZE), disable=not show_progress_bar, desc="Crossover", leave=leave_progress_bar):
-        parent1 = copy.deepcopy(rng.choice(better_half))
+        parent1 = copy.deepcopy(rng.choice(population))
         parent2 = copy.deepcopy(rng.choice(population))
-        crossed.append(parent1.crossover(parent2))  # Parents are crossing and result is appended to crossed list
+        if rng.random() < CROSS_RATE:
+            children = parent1.crossover(parent2)
+            crossed.extend(children)
+        else:
+            crossed.append(parent1)
+            crossed.append(parent2)
     return crossed
 
 
@@ -159,12 +172,12 @@ def replace(new_gen, population):
     sorted.sort(key=lambda x: x.fitness)
     return sorted[:POPULATION_SIZE]
 
-
     # Genetic algorithm steps:
     # 1. Initialize a population N
     # 2. Select individuals to evolve from
     # 3. Crossover of couples of parents
     # 4. Mutate individuals according to their mutation rate
+
 
 def main():
     """
@@ -177,6 +190,7 @@ def main():
     4. Mutate individuals according to their mutation rate
 
     """
+    signal.signal(signal.SIGINT, signal_handler)
     initial_population = initialize_population(POPULATION_SIZE)
     found = False
     population = initial_population
@@ -185,6 +199,8 @@ def main():
     print("Initial Population Size: ", POPULATION_SIZE)
     initial_population.sort(key=lambda x: x.fitness)
     best_fitness = initial_population[0].fitness
+    global BEST_INDIVIDUAL_STR
+    BEST_INDIVIDUAL_STR = str(population[0])
     print(f"Best fitness: {best_fitness}")
 
     # Do the loop until the target is found
@@ -192,7 +208,7 @@ def main():
         sleep(0.1)
         tournament_winners = select_tournament(population)
         population = sorted(population, key=lambda x: x.fitness)
-        crossed = crossover(tournament_winners, population) # nie wybierać z populacji!!
+        crossed = crossover(tournament_winners)
         new_population = mutate(crossed)
 
         population = replace(new_population, population)
@@ -206,6 +222,17 @@ def main():
             best_fitness = population[0].fitness
             print(f"New best fitness! {best_fitness}")
         print(f"G{generation}:\tBest values: {population[0].chromo}, Fitness: {population[0].fitness}")
+
+
+def signal_handler(sig, frame):
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+    filename = "logs/best_" + str(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")) + ".log"
+    logfile = open(filename, mode="x")
+    logfile.write(BEST_INDIVIDUAL_STR)
+    logfile.close()
+    print("\nClosing program. The best individual is saved in " + filename + "\n")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
