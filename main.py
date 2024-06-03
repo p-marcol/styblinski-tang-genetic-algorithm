@@ -40,7 +40,7 @@ class Genome:
         Generate a random chromosome using the rng object and calculate the fitness
         """
         self.chromo = rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1], PARAMETER_COUNT)
-        self.fitness = float(styblinski_tang(self.chromo) - TARGET)
+        self.fitness = float(styblinski_tang(self.chromo))
 
     def set_chromo(self, chromo):
         """
@@ -49,7 +49,7 @@ class Genome:
         :param chromo: new chromosome to set
         """
         self.chromo = chromo
-        self.fitness = float(styblinski_tang(self.chromo) - TARGET)
+        self.fitness = float(styblinski_tang(self.chromo))
 
     def mutate(self):
         """
