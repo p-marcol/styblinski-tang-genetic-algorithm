@@ -1,8 +1,10 @@
 import copy
 import os.path
 
+import numpy
 from tqdm import tqdm
 from time import sleep
+from numpy import longdouble
 import numpy as np
 import signal
 import sys
@@ -40,7 +42,7 @@ class Genome:
         Generate a random chromosome using the rng object and calculate the fitness
         """
         self.chromo = rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1], PARAMETER_COUNT)
-        self.fitness = float(styblinski_tang(self.chromo))
+        self.fitness = longdouble(styblinski_tang(self.chromo))
 
     def set_chromo(self, chromo):
         """
@@ -49,7 +51,14 @@ class Genome:
         :param chromo: new chromosome to set
         """
         self.chromo = chromo
-        self.fitness = float(styblinski_tang(self.chromo))
+        self.fitness = longdouble(styblinski_tang(self.chromo))
+
+    def calculate_fitness(self):
+        """
+        Calculate the fitness of the chromosome
+        :return:  fitness of the chromosome
+        """
+        self.fitness = longdouble(styblinski_tang(self.chromo))
 
     def mutate(self):
         """
@@ -57,7 +66,8 @@ class Genome:
         """
         for i in range(PARAMETER_COUNT):
             if rng.random() < MUTATION_RATE:
-                self.chromo[i] = float(rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1]))
+                self.chromo[i] = longdouble(rng.uniform(FUNCTION_DOMAIN[0], FUNCTION_DOMAIN[1]))
+                self.calculate_fitness()
 
     def crossover(self, individual):
         """
@@ -192,19 +202,18 @@ def main():
     """
     signal.signal(signal.SIGINT, signal_handler)
     initial_population = initialize_population(POPULATION_SIZE)
-    found = False
     population = initial_population
     generation = 0
 
     print("Initial Population Size: ", POPULATION_SIZE)
     initial_population.sort(key=lambda x: x.fitness)
-    best_fitness = initial_population[0].fitness
+    best_fitness = copy.deepcopy(initial_population[0])
     global BEST_INDIVIDUAL_STR
     BEST_INDIVIDUAL_STR = str(population[0])
-    print(f"Best fitness: {best_fitness}")
+    print(f"Best fitness: {best_fitness.fitness}")
 
     # Do the loop until the target is found
-    while not found:
+    while True:
         sleep(0.1)
         tournament_winners = select_tournament(population)
         population = sorted(population, key=lambda x: x.fitness)
@@ -214,13 +223,11 @@ def main():
         population = replace(new_population, population)
 
         generation += 1
-        if population[0].fitness == 0:
-            print("Target found!")
-            print(f"Values: {population[0].chromo}, Generation {generation}")
-            break
-        if population[0].fitness < best_fitness:
-            best_fitness = population[0].fitness
-            print(f"New best fitness! {best_fitness}")
+
+        if population[0].fitness < best_fitness.fitness:
+            BEST_INDIVIDUAL_STR = str(population[0])
+            best_fitness = copy.deepcopy(population[0])
+            print(f"New best fitness! {best_fitness.fitness}")
         print(f"G{generation}:\tBest values: {population[0].chromo}, Fitness: {population[0].fitness}")
 
 
