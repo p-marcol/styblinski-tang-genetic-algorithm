@@ -5,12 +5,11 @@ This repository contains the implementation of the Styblinski-Tang function mini
 ## Styblinski-Tang function
 
 The Styblinski-Tang function is a function used as a performance test problem for optimization algorithms. It is defined as follows:
+$f(\mathbf{x})=\frac{1}{2}\sum_{i=1}^{n}x_i^4-16x_i^2+5x_i$
 
-![equation](<https://latex.codecogs.com/gif.latex?f(\mathbf{x})&space;=&space;\frac{1}{2}\sum_{i=1}^{n}x_i^4&space;-&space;16x_i^2&space;+&space;5x_i>)
+where $x_i\in[-5,5]$ for $i=1,2,...,n$.
 
-where ![equation](https://latex.codecogs.com/gif.latex?x_i&space;\in&space;[-5,5]) for ![equation](https://latex.codecogs.com/gif.latex?i&space;=&space;1,2,...,n).
-
-The global minimum of this function is located at ![equation](<https://latex.codecogs.com/gif.latex?f(\mathbf{x}^*)&space;=&space;-39.16599n>) for ![equation](https://latex.codecogs.com/gif.latex?x_i&space;=&space;-2.903534) for ![equation](https://latex.codecogs.com/gif.latex?i&space;=&space;1,2,...,n).
+The global minimum of this function is located at $f(\mathbf{x}^*)=-39.16599n$ for $x_i=-2.903534$ for $i=1,2,...,n$
 
 ## Genetic algorithm
 
